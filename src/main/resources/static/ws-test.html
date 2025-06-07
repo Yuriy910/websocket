@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<h2>WebSocket Уведомления</h2>
+
+<label>need userId: <input id="uid" value="1" /></label>
+<button onclick="connect()">Connection</button>
+
+<div id="notifications"></div>
+
+<script>
+    let stompClient = null;
+    let heartbeatInterval = null;
+
+    function connect() {
+        const userId = document.getElementById("uid").value.trim();
+        if (!userId) {
+            alert("Введите userId");
+            return;
+        }
+
+        // Отключаем старое соединение
+        if (stompClient !== null) {
+            clearInterval(heartbeatInterval);
+            stompClient.disconnect();
+            stompClient = null;
+        }
+
+        const socket = new SockJS('/ws?userId=' + encodeURIComponent(userId));
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function () {
+            const notifications = document.getElementById('notifications');
+
+            //  Подписка на обычные уведомления
+            stompClient.subscribe(`/topic/notify/${userId}`, function (message) {
+                const data = JSON.parse(message.body);
+                const eventId = data.eventId || '';
+                const msg = data.msg || '';
+
+                const p = document.createElement('p');
+                p.textContent = msg;
+                notifications.appendChild(p);
+
+                console.log(" Получено сообщение:", msg, "eventId:", eventId);
+
+                stompClient.send("/app/ack", {}, JSON.stringify({
+                    userId: userId,
+                    messageId: eventId
+                }));
+            });
+
+            stompClient.subscribe(`/topic/pending/${userId}`, function (message) {
+                const pendingList = JSON.parse(message.body);
+
+                pendingList.forEach(pending => {
+                    const scheduledTime = pending.scheduledTime || '';
+                    const msg = pending.msg || '';
+
+                    const p = document.createElement('p');
+                    p.textContent = `[Pending @${scheduledTime}] ${msg}`;
+                    notifications.appendChild(p);
+                });
+
+                console.log(" Получены отложенные уведомления:", pendingList);
+            });
+
+            //  Подписка на pong от сервера
+            stompClient.subscribe(`/user/queue/ping`, function (message) {
+                console.log(" Получен pong:", message.body);
+            });
+
+            //  Heartbeat каждые 10 сек
+            heartbeatInterval = setInterval(() => {
+                if (stompClient && stompClient.connected) {
+                    stompClient.send("/app/ping", {}, JSON.stringify({userId: userId}));
+                    console.log(" Пинг отправлен");
+                }
+            }, 10000);
+
+            console.log(" Подключено как userId:", userId);
+        }, function (error) {
+            console.error(' Ошибка подключения:', error);
+        });
+    }
+</script>
+
+</body>
+</html>
