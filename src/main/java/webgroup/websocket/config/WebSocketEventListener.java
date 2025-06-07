@@ -22,18 +22,18 @@ public class WebSocketEventListener {
         String userIdStr = accessor.getFirstNativeHeader("userId");
         String sessionId = accessor.getSessionId();
 
-        log.debug("📥 Новое WebSocket-соединение: sessionId={}, rawUserId={}", sessionId, userIdStr);
+        log.debug("Новое WebSocket-соединение: sessionId={}, rawUserId={}", sessionId, userIdStr);
 
         if (userIdStr != null) {
             try {
                 Long userId = Long.parseLong(userIdStr);
                 webSocketSender.registerSession(sessionId, userId);
-                log.info("✅ Пользователь {} подключился по WebSocket (sessionId={})", userId, sessionId);
+                log.info("Пользователь {} подключился по WebSocket (sessionId={})", userId, sessionId);
             } catch (NumberFormatException e) {
-                log.warn("⚠️ Ошибка парсинга userId='{}' из заголовка. sessionId={}", userIdStr, sessionId);
+                log.warn("Ошибка парсинга userId='{}' из заголовка. sessionId={}", userIdStr, sessionId);
             }
         } else {
-            log.warn("⚠️ Отсутствует userId в заголовках WebSocket. sessionId={}", sessionId);
+            log.warn("Отсутствует userId в заголовках WebSocket. sessionId={}", sessionId);
         }
     }
 
@@ -42,9 +42,9 @@ public class WebSocketEventListener {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = accessor.getSessionId();
 
-        log.debug("📴 Отключение WebSocket-сессии: sessionId={}", sessionId);
+        log.debug("Отключение WebSocket-сессии: sessionId={}", sessionId);
         webSocketSender.unregisterSession(sessionId);
-        log.info("🔌 Отключен пользователь WebSocket-сессии: sessionId={}", sessionId);
+        log.info("Отключен пользователь WebSocket-сессии: sessionId={}", sessionId);
     }
 }
 
